@@ -1,4 +1,5 @@
-FROM flannon/openjdk
+FROM flannon/docker-openjdk
+#FROM 172.30.1.1:5000/build-jdk/docker-openjdk
 
 ENV CATALINA_HOME /usr/local/tomcat
 ENV PATH $CATALINA_HOME/bin:$PATH
@@ -16,36 +17,36 @@ ENV LD_LIBRARY_PATH ${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$TOMCAT_NATIVE_LIBDIR
 # see http://tomcat.10.x6.nabble.com/VOTE-Release-Apache-Tomcat-8-0-32-tp5046007p5046024.html (and following discussion)
 # and https://github.com/docker-library/tomcat/pull/31
 ENV OPENSSL_VERSION 1.1.0f-3+deb9u2
-RUN set -ex; \
-	currentVersion="$(dpkg-query --show --showformat '${Version}\n' openssl)"; \
-	if dpkg --compare-versions "$currentVersion" '<<' "$OPENSSL_VERSION"; then \
-		if ! grep -q stretch /etc/apt/sources.list; then \
-# only add stretch if we're not already building from within stretch
-			{ \
-				echo 'deb http://deb.debian.org/debian stretch main'; \
-				echo 'deb http://security.debian.org stretch/updates main'; \
-				echo 'deb http://deb.debian.org/debian stretch-updates main'; \
-			} > /etc/apt/sources.list.d/stretch.list; \
-			{ \
-# add a negative "Pin-Priority" so that we never ever get packages from stretch unless we explicitly request them
-				echo 'Package: *'; \
-				echo 'Pin: release n=stretch*'; \
-				echo 'Pin-Priority: -10'; \
-				echo; \
+#RUN set -ex; \
+#	currentVersion="$(dpkg-query --show --showformat '${Version}\n' openssl)"; \
+#	if dpkg --compare-versions "$currentVersion" '<<' "$OPENSSL_VERSION"; then \
+#		if ! grep -q stretch /etc/apt/sources.list; then \
+## only add stretch if we're not already building from within stretch
+#			{ \
+#				echo 'deb http://deb.debian.org/debian stretch main'; \
+#				echo 'deb http://security.debian.org stretch/updates main'; \
+#				echo 'deb http://deb.debian.org/debian stretch-updates main'; \
+#			} > /etc/apt/sources.list.d/stretch.list; \
+#			{ \
+## add a negative "Pin-Priority" so that we never ever get packages from stretch unless we explicitly request them
+#				echo 'Package: *'; \
+#				echo 'Pin: release n=stretch*'; \
+#				echo 'Pin-Priority: -10'; \
+#				echo; \
 # ... except OpenSSL, which is the reason we're here
-				echo 'Package: openssl libssl*'; \
-				echo "Pin: version $OPENSSL_VERSION"; \
-				echo 'Pin-Priority: 990'; \
-			} > /etc/apt/preferences.d/stretch-openssl; \
-		fi; \
-		apt-get update; \
-		apt-get install -y --no-install-recommends openssl="$OPENSSL_VERSION"; \
-		rm -rf /var/lib/apt/lists/*; \
-	fi
+#				echo 'Package: openssl libssl*'; \
+#				echo "Pin: version $OPENSSL_VERSION"; \
+#				echo 'Pin-Priority: 990'; \
+#			} > /etc/apt/preferences.d/stretch-openssl; \
+##		fi; \
+#		apt-get update; \
+#		apt-get install -y --no-install-recommends openssl="$OPENSSL_VERSION"; \
+#		rm -rf /var/lib/apt/lists/*; \
+#	fi
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-		libapr1 \
-	&& rm -rf /var/lib/apt/lists/*
+#RUN apt-get update && apt-get install -y --no-install-recommends \
+#		libapr1 \
+#	&& rm -rf /var/lib/apt/lists/*
 
 # see https://www.apache.org/dist/tomcat/tomcat-$TOMCAT_MAJOR/KEYS
 # see also "update.sh" (https://github.com/docker-library/tomcat/blob/master/update.sh)
@@ -56,7 +57,7 @@ ENV TOMCAT_VERSION 8.5.31
 ENV TOMCAT_SHA512 a961eedc4b0c0729f1fb96dafb75eb48e000502233b849f47c84a6355873bc96d131b112400587e96391262e0659df9b991b4e66a78fda74168f939c4ab5af88
 
 ENV TOMCAT_TGZ_URLS \
-# https://issues.apache.org/jira/browse/INFRA-8753?focusedCommentId=14735394#comment-14735394
+  https://issues.apache.org/jira/browse/INFRA-8753?focusedCommentId=14735394#comment-14735394
 	https://www.apache.org/dyn/closer.cgi?action=download&filename=tomcat/tomcat-$TOMCAT_MAJOR/v$TOMCAT_VERSION/bin/apache-tomcat-$TOMCAT_VERSION.tar.gz \
 # if the version is outdated, we might have to pull from the dist/archive :/
 	https://www-us.apache.org/dist/tomcat/tomcat-$TOMCAT_MAJOR/v$TOMCAT_VERSION/bin/apache-tomcat-$TOMCAT_VERSION.tar.gz \
@@ -70,19 +71,20 @@ ENV TOMCAT_ASC_URLS \
 	https://www.apache.org/dist/tomcat/tomcat-$TOMCAT_MAJOR/v$TOMCAT_VERSION/bin/apache-tomcat-$TOMCAT_VERSION.tar.gz.asc \
 	https://archive.apache.org/dist/tomcat/tomcat-$TOMCAT_MAJOR/v$TOMCAT_VERSION/bin/apache-tomcat-$TOMCAT_VERSION.tar.gz.asc
 
+##
 RUN set -eux; \
-	\
-	savedAptMark="$(apt-mark showmanual)"; \
-	apt-get update; \
-	\
-	apt-get install -y --no-install-recommends gnupg dirmngr; \
-	\
+#	\
+#	savedAptMark="$(apt-mark showmanual)"; \
+#	apt-get update; \
+#	\
+#	apt-get install -y --no-install-recommends gnupg dirmngr; \
+#	\
 	export GNUPGHOME="$(mktemp -d)"; \
 	for key in $GPG_KEYS; do \
 		gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
 	done; \
 	\
-	apt-get install -y --no-install-recommends wget ca-certificates; \
+	yum install -y --no-install-recommends wget ca-certificates; \
 	\
 	success=; \
 	for url in $TOMCAT_TGZ_URLS; do \
@@ -138,11 +140,11 @@ RUN set -eux; \
 	rm bin/tomcat-native.tar.gz; \
 	\
 # reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
-	apt-mark auto '.*' > /dev/null; \
-	[ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; \
-	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
-	rm -rf /var/lib/apt/lists/*; \
-	\
+#	apt-mark auto '.*' > /dev/null; \
+#	[ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; \
+#	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
+#	rm -rf /var/lib/apt/lists/*; \
+#	\
 # sh removes env vars it doesn't support (ones with periods)
 # https://github.com/docker-library/tomcat/issues/77
 	find ./bin/ -name '*.sh' -exec sed -ri 's|^#!/bin/sh$|#!/usr/bin/env bash|' '{}' +
@@ -158,4 +160,6 @@ RUN set -e \
 	fi
 
 EXPOSE 8080
+USER 1001
+
 CMD ["catalina.sh", "run"]
