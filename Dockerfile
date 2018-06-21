@@ -1,4 +1,4 @@
-FROM openjdk:8-jre
+FROM flannon/openjdk
 
 ENV CATALINA_HOME /usr/local/tomcat
 ENV PATH $CATALINA_HOME/bin:$PATH
